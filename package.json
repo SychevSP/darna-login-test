@@ -17,7 +17,6 @@
     "format:staged": "pretty-quick --staged",
     "lint": "nx affected --target=lint",
     "nx": "nx",
-    "prepare": "husky install",
     "release": "changeset publish",
     "release:beta": "changeset publish --tag beta --no-git-tag",
     "start:e2e": "nx run-many --target=serve --projects=autoscript-apps,mock-api --configuration=development",

@@ -40,7 +40,8 @@
         "port": 8443,
         "ssl": true,
         "open": true,
-        "host": "sdkapp.example.com"
+        "liveReload": false,
+        "host": "react.example.com"
       },
       "configurations": {
         "okteto": {

@@ -12,15 +12,16 @@ import * as forgerock from '@forgerock/javascript-sdk';
 
 const FATAL = 'Fatal';
 forgerock.Config.set({
-  clientId: process.env.WEB_OAUTH_CLIENT, // e.g. 'ForgeRockSDKClient'
+  clientId: 'aldarPoc', // e.g. 'ForgeRockSDKClient'
   redirectUri: `${window.location.origin}/callback`, // e.g. 'https://sdkapp.example.com:8443/callback'
-  scope: process.env.SCOPE, // e.g. 'openid profile email address phone'
+  scope: 'openid profile email address phone', // e.g. 'openid profile email address phone'
   serverConfig: {
-    baseUrl: process.env.AM_URL, // e.g. 'https://myorg.forgeblocks.com/am' or 'https://openam.example.com:8443/openam'
-    timeout: parseInt(process.env.TIMEOUT), // 90000 or less
+    baseUrl: 'https://openam-aldar-euw3-dev.id.forgerock.io/am', // e.g. 'https://myorg.forgeblocks.com/am' or 'https://openam.example.com:8443/openam'
+    timeout: 60000, // 90000 or less
   },
-  realmPath: process.env.REALM_PATH, // e.g. 'alpha' or 'root'
-  tree: process.env.TREE, // e.g. 'sdkAuthenticationTree' or 'Login'
+  realmPath: 'alpha', // e.g. 'alpha' or 'root'
+  oauthThreshold: 60,
+  tree: 'Darna-Registration',
 });
 
 // Define custom handlers to render and submit each expected step
@@ -28,12 +29,36 @@ const handlers = {
   UsernamePassword: (step) => {
     const panel = document.querySelector('#UsernamePassword');
     panel.querySelector('.btn').addEventListener('click', () => {
-      const nameCallback = step.getCallbackOfType('NameCallback');
-      const passwordCallback = step.getCallbackOfType('PasswordCallback');
-      nameCallback.setName(panel.querySelector('input[type=text]').value);
-      passwordCallback.setPassword(panel.querySelector('input[type=password]').value);
+      const nameCallback = step.getCallbackOfType('StringAttributeInputCallback');
+      nameCallback.setValue(panel.querySelector('input[type=text]').value);
       nextStep(step);
     });
+  },
+  CustomerName: (step) => {
+    const panel = document.querySelector('#CustomerName');
+    panel.querySelector('.btn').addEventListener('click', () => {
+      const cbs = step.getCallbacksOfType('StringAttributeInputCallback');
+      console.log(panel.querySelector('#CustomerName-FirstName').value);
+      cbs[0].setValue(panel.querySelector('#CustomerName-FirstName').value);
+      cbs[1].setValue(panel.querySelector('#CustomerName-LastName').value);
+      cbs[2].setValue(panel.querySelector('#CustomerName-EmailId').value);
+      nextStep(step);
+    });
+  },
+  CustomerInfo: (step) => {
+    const panel = document.querySelector('#CustomerInfo');
+    panel.querySelector('.btn').addEventListener('click', () => {
+      const cbs = step.getCallbacksOfType('StringAttributeInputCallback');
+      cbs[0].setValue(panel.querySelector('#CustomerInfo-birth').value);
+      cbs[1].setValue(panel.querySelector('#CustomerInfo-gender').value);
+      cbs[2].setValue(panel.querySelector('#CustomerInfo-nation').value);
+      cbs[3].setValue(panel.querySelector('#CustomerInfo-city').value);
+      nextStep(step);
+    });
+  },
+  Debug: (step) => {
+    console.log('debug step');
+    nextStep(step);
   },
   Error: (step) => {
     document.querySelector('#Error span').innerHTML = step.getCode();
@@ -43,12 +68,16 @@ const handlers = {
 
 // Show only the view for this handler
 const showStep = (handler) => {
+  if (handler === 'Debug') {
+    return true;
+  }
   document.querySelectorAll('#steps > div').forEach((x) => x.classList.remove('active'));
   const panel = document.getElementById(handler);
   if (!panel) {
     console.error(`No panel with ID "${handler}"" found`);
     return false;
   }
+  console.log('make visible', handler);
   document.getElementById(handler).classList.add('active');
   return true;
 };
@@ -64,11 +93,21 @@ const showUser = (user) => {
 
 const getStage = (step) => {
   // Check if the step contains callbacks for capturing username and password
-  const usernameCallbacks = step.getCallbacksOfType('NameCallback');
-  const passwordCallbacks = step.getCallbacksOfType('PasswordCallback');
+  const usernameCallbacks = step.getCallbacksOfType('StringAttributeInputCallback');
 
-  if (usernameCallbacks.length && passwordCallbacks.length) {
+  if (usernameCallbacks.length === 1) {
     return 'UsernamePassword';
+  }
+  if (usernameCallbacks.length === 3) {
+    return 'CustomerName';
+  }
+  if (usernameCallbacks.length === 4) {
+    return 'CustomerInfo';
+  }
+
+  const toc = step.getCallbacksOfType('TextOutputCallback');
+  if (toc.length) {
+    return 'Debug';
   }
 
   return undefined;
@@ -76,6 +115,7 @@ const getStage = (step) => {
 
 // Display and bind the handler for this stage
 const handleStep = async (step) => {
+  console.log(step);
   switch (step.type) {
     case 'LoginSuccess': {
       // If we have a session token, get user information

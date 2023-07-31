@@ -32,7 +32,7 @@ module.exports = (config) => {
       client: {
         ...(config.devServer?.client ?? {}),
         webSocketURL: {
-          port: 443,
+          port: 8443,
         },
       },
       headers: {
