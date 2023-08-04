@@ -26,11 +26,12 @@ forgerock.Config.set({
 
 // Define custom handlers to render and submit each expected step
 const handlers = {
-  UsernamePassword: (step) => {
-    const panel = document.querySelector('#UsernamePassword');
+  PhoneNumber: (step) => {
+    const panel = document.querySelector('#PhoneNumber');
     panel.querySelector('.btn').addEventListener('click', () => {
-      const nameCallback = step.getCallbackOfType('StringAttributeInputCallback');
-      nameCallback.setValue(panel.querySelector('input[type=text]').value);
+      const phoneCallback = step.getCallbackOfType('NameCallback');
+      console.log(phoneCallback);
+      phoneCallback.setName(panel.querySelector('input[type=text]').value);
       nextStep(step);
     });
   },
@@ -53,6 +54,14 @@ const handlers = {
       cbs[1].setValue(panel.querySelector('#CustomerInfo-gender').value);
       cbs[2].setValue(panel.querySelector('#CustomerInfo-nation').value);
       cbs[3].setValue(panel.querySelector('#CustomerInfo-city').value);
+      nextStep(step);
+    });
+  },
+  OTP: (step) => {
+    const panel = document.querySelector('#OTP');
+    panel.querySelector('.btn').addEventListener('click', () => {
+      const otpCallback = step.getCallbackOfType('PasswordCallback');
+      otpCallback.setPassword(panel.querySelector('input[type=text]').value);
       nextStep(step);
     });
   },
@@ -92,17 +101,24 @@ const showUser = (user) => {
 };
 
 const getStage = (step) => {
-  // Check if the step contains callbacks for capturing username and password
-  const usernameCallbacks = step.getCallbacksOfType('StringAttributeInputCallback');
 
-  if (usernameCallbacks.length === 1) {
-    return 'UsernamePassword';
+  const nameCallbacks = step.getCallbacksOfType('NameCallback');
+  const passwordCallbacks = step.getCallbacksOfType('PasswordCallback');
+  const attributeCallbacks = step.getCallbacksOfType('StringAttributeInputCallback');
+
+  if (nameCallbacks.length === 1) {
+    return 'PhoneNumber';
   }
-  if (usernameCallbacks.length === 3) {
+
+  if (attributeCallbacks.length === 3) {
     return 'CustomerName';
   }
-  if (usernameCallbacks.length === 4) {
+  if (attributeCallbacks.length === 4) {
     return 'CustomerInfo';
+  }
+
+  if (passwordCallbacks.length === 1) {
+    return 'OTP';
   }
 
   const toc = step.getCallbacksOfType('TextOutputCallback');
@@ -122,6 +138,9 @@ const handleStep = async (step) => {
       const sessionToken = step.getSessionToken();
       const tokens = await forgerock.TokenManager.getTokens();
       const user = await forgerock.UserManager.getCurrentUser();
+      console.log('sessionToken', sessionToken);
+      console.log('tokens', tokens);
+      console.log('user', user);
       return showUser(user);
     }
 
@@ -133,6 +152,7 @@ const handleStep = async (step) => {
 
     default: {
       const stage = getStage(step) || FATAL;
+      console.log('stage is', stage);
       if (!showStep(stage)) {
         showStep(FATAL);
         handlers[FATAL](step);
